@@ -1,416 +1,121 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>Rice Map Gummawala Kharif 2024</title>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Map with GeoJSON</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 98vh; width: 98vw; }
+        .legend {
+            background: white;
+            padding: 10px;
+            line-height: 1.5em;
+            border: 2px solid #ccc;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+            font-size: 14px;
+        }
+        .legend i {
+            width: 20px;
+            height: 10px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
 </head>
 <body>
-    <div id="map" style="width: 98vw; height: 98vh;"></div>
+    <div id="map"></div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/chroma-js@2.1.0/chroma.min.js"></script>
     <script>
-        var map = L.map('map').setView([29.950607,  77.911887], 12); // Centered near Gummawala
-
-        // Google Satellite Hybrid Layer
-        var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>'
-        }).addTo(map);
-
-        // Load GeoJSON from file
-        fetch("http://localhost:8000/geojson/rice_planet_classification.geojson")
+        fetch('https://raw.githubusercontent.com/goswamishreyas/Rice-map-gummawala/main/data/Yield_classified_Rice.geojson')
             .then(response => response.json())
             .then(data => {
-                L.geoJSON(data, {
-                    style: {
-                        color: "blue",
-                        weight: 2
-                    },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties && feature.properties.name) {
-                            layer.bindPopup(feature.properties.name);
+                const map = L.map('map').setView([29.96788, 77.91984], 14);
+
+                // Base layers
+                const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+
+                const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 18,
+                    attribution: '&copy; Esri'
+                });
+
+                const baseLayers = {
+                    "OpenStreetMap": osm,
+                    "Satellite": satellite
+                };
+
+                // Set fixed yield ranges for color scale
+                const yieldRanges = [5, 272, 550, 957, 1575, 7445];
+                const colorScale = chroma.scale(['red', 'orange', 'yellow', 'lightgreen', 'green']).colors(5);
+
+                function style(feature) {
+                    const yieldVal = feature.properties.Pred_yield;
+                    let color = 'white';
+
+                    // Assign color based on yield range
+                    for (let i = 0; i < yieldRanges.length - 1; i++) {
+                        if (yieldVal >= yieldRanges[i] && yieldVal < yieldRanges[i + 1]) {
+                            color = colorScale[i];
+                            break;
                         }
+                    }
+
+                    return {
+                        fillColor: color,
+                        weight: 1,
+                        opacity: 1,
+                        color: 'white',
+                        fillOpacity: 1
+                    };
+                }
+
+                const yieldLayer = L.geoJSON(data, {
+                    style: style,
+                    onEachFeature: function (feature, layer) {
+                        const props = feature.properties;
+                        layer.bindPopup(`Field: ${props.FID}<br>Predicted Yield: ${props.Pred_yield.toFixed(2)} tons/ha`);
                     }
                 }).addTo(map);
-            })
-            .catch(error => console.error('Error loading GeoJSON:', error));
-    </script>
-</body>
-</html> -->
 
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Map with GeoJSON</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-</head>
-<body>
-    <div id="map" style="width: 98vw; height: 98vh;"></div>
+                const overlayLayers = {
+                    "Yield Layer": yieldLayer
+                };
 
-    <script>
-        var map = L.map('map').setView([29.950607,  77.911887], 15); // Centered on India
+                // Add layer control
+                L.control.layers(baseLayers, overlayLayers, {collapsed: false}).addTo(map);
 
-        // Google Satellite Hybrid Layer
-        var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>'
-        });
+                // Add legend
+                const legend = L.control({ position: 'bottomright' });
 
-        // OpenStreetMap Layer
-        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        });
-
-        // Layer control
-        var baseMaps = {
-            "Google Hybrid": googleHybrid,
-            "OpenStreetMap": osm
-        };
-
-        var geoJsonLayer = L.layerGroup();
-
-        var overlayMaps = {
-            "Rice fields": geoJsonLayer
-        };
-
-        L.control.layers(baseMaps, overlayMaps).addTo(map);
-
-        googleHybrid.addTo(map);
-
-        // Load GeoJSON from file
-        fetch('http://localhost:8000/geojson/rice_planet_classification.geojson')
-            .then(response => response.json())
-            .then(data => {
-                var geoJson = L.geoJSON(data, {
-                    style: {
-                        color: "black", // Border color
-                        fillColor: "green", // Fill color
-                        fillOpacity: 1, // Transparency
-                        weight: 1
-                    },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties && feature.properties.name) {
-                            layer.bindPopup(feature.properties.name);
-                        }
+                legend.onAdd = function () {
+                    const div = L.DomUtil.create('div', 'legend');
+                    div.innerHTML = '<b>Yield (tons/ha)</b><br>';
+                    
+                    // Display yield ranges and corresponding colors
+                    for (let i = 0; i < yieldRanges.length - 1; i++) {
+                        div.innerHTML +=
+                            `<i style="background:${colorScale[i]}"></i> ${yieldRanges[i]} - ${yieldRanges[i + 1]}<br>`;
                     }
-                });
-                geoJsonLayer.addLayer(geoJson);
-                geoJsonLayer.addTo(map);
-            })
-            .catch(error => console.error('Error loading GeoJSON:', error));
+                    return div;
+                };
+                legend.addTo(map);
+
+                // Add scale control
+                L.control.scale().addTo(map);
+            });
     </script>
 </body>
-</html> -->
+</html>
 
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Map with GeoJSON</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        .legend {
-            background: white;
-            padding: 8px; /*  Reduced padding */
-            line-height: 20px; /*  Reduced line height */
-            color: #555;
-            position: absolute;
-            bottom: 30px;
-            left: 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-            min-width: 160px; /*  Slightly reduced width */
-            display: flex;
-            flex-direction: column;
-        }
-
-        .legend strong {
-            display: block;
-            margin-bottom: 5px; 
-            line-height: 1; 
-        }
-
-
-        .legend i {
-            width: 16px; /*  Reduced icon size */
-            height: 16px;
-            display: inline-block;
-            margin-right: 6px; /*  Reduced spacing between icon and text */
-            vertical-align: middle;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px; /*  Reduced gap between color box and text */
-            margin-bottom: 2px; /*  Reduced space between legend items */
-        }
-
-    </style>
-</head>
-<body>
-    <div id="map" style="width: 98vw; height: 98vh;"></div>
-
-    <script>
-        var map = L.map('map').setView([29.950607,  77.911887], 15); // Centered near Gummawala
-
-        // Google Satellite Hybrid Layer
-        var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>'
-        });
-
-        // OpenStreetMap Layer
-        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        });
-
-        // Layer control
-        var baseMaps = {
-            "Google Hybrid": googleHybrid,
-            "OpenStreetMap": osm
-        };
-
-        var geoJsonLayer = L.layerGroup();
-
-        var overlayMaps = {
-            "GeoJSON Layer": geoJsonLayer
-        };
-
-        L.control.layers(baseMaps, overlayMaps).addTo(map);
-
-        googleHybrid.addTo(map);
-
-        // Define colors for different classification values
-        function getColor(classifica) {
-            var colors = {
-                "1": "#ff0000",
-                "2": "#00ff00",
-                "3": "#0000ff",
-                "4": "#ffff00",
-                "5": "#ff00ff",
-                "6": "#ff9900",
-                "7": "#6600cc",
-                "8": "#009999"
-            };
-            return colors[classifica] || "#808080"; // Default gray color
-        }
-
-        // Load GeoJSON from file
-        fetch('http://localhost:8000/geojson/Yield_classified_Rice.geojson')
-            .then(response => response.json())
-            .then(data => {
-                var geoJson = L.geoJSON(data, {
-                    style: function(feature) {
-                        return {
-                            color: "black", // Border color
-                            fillColor: getColor(feature.properties.classification), // Fill color
-                            fillOpacity: 1, // Transparency
-                            weight: 1
-                        };
-                    },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties && feature.properties.name) {
-                            layer.bindPopup("Yield: " + feature.properties.Pred_yield + "<br>Class: " + feature.properties.classification);
-                        }
-                    }
-                });
-                geoJsonLayer.addLayer(geoJson);
-                geoJsonLayer.addTo(map);
-            })
-            .catch(error => console.error('Error loading GeoJSON:', error));
-
-        // Add legend
-        var legend = L.control({ position: "bottomleft" });
-        
-        legend.onAdd = function(map) {
-            var div = L.DomUtil.create("div", "legend");
-            var classes = ["Rice", "Built-up", "Tree", "Water", "Sugarcane", "Grass", "Brinjal", "Blackgram"];
-            var colors = ["#00ff00","#ff0000", "#0000ff", "#ffff00", "#ff00ff", "#ff9900", "#6600cc", "#009999"];
-
-            div.innerHTML = "<strong>Legend</strong>"; // 🔹 Removed <br> tag here
-            for (var i = 0; i < classes.length; i++) {
-                div.innerHTML += `<div class="legend-item">
-                    <i style="background: ${colors[i]};"></i> ${classes[i]}
-                </div>`;
-            }
-            return div;
-        };
-
-        // legend.onAdd = function(map) {
-        //     var div = L.DomUtil.create("div", "legend");
-        //     var classes = ["Rice", "Built-up", "Tree", "Water", "Sugarcane", "Grass", "Brinjal", "Blackgram"];
-        //     var colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#ff9900", "#6600cc", "#009999"];
-
-        //     div.innerHTML = "<strong>Legend</strong><br>";
-        //     for (var i = 0; i < classes.length; i++) {
-        //         div.innerHTML += '<i style="background: ' + colors[i] + '"></i> ' + classes[i] + '<br>';
-        //     }
-        //     return div;
-        // };
-
-        legend.addTo(map);
-    </script>
-</body>
-</html> -->
-
-
-
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaflet Map with GeoJSON</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        .legend {
-            background: white;
-            padding: 8px;
-            line-height: 20px;
-            color: #555;
-            position: absolute;
-            bottom: 30px;
-            left: 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-            min-width: 160px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .legend strong {
-            display: block;
-            margin-bottom: 5px; 
-            line-height: 1; 
-        }
-
-        .legend i {
-            width: 16px;
-            height: 16px;
-            display: inline-block;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            margin-bottom: 2px;
-        }
-    </style>
-</head>
-<body>
-    <div id="map" style="width: 98vw; height: 98vh;"></div>
-
-    <script>
-        var map = L.map('map').setView([29.950607, 77.911887], 15); // Centered near Gummawala
-
-        // Google Satellite Hybrid Layer
-        var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>'
-        });
-
-        // OpenStreetMap Layer
-        var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        });
-
-        // Layer control
-        var baseMaps = {
-            "Google Hybrid": googleHybrid,
-            "OpenStreetMap": osm
-        };
-
-        var geoJsonLayer = L.layerGroup();
-
-        var overlayMaps = {
-            "GeoJSON Layer": geoJsonLayer
-        };
-
-        L.control.layers(baseMaps, overlayMaps).addTo(map);
-
-        googleHybrid.addTo(map);
-
-        // Define colors for different classification values
-        function getColor(classifica) {
-            var colors = {
-                "1": "#00ff00",
-                "2": "#ff0000",
-                "3": "#0000ff",
-                "4": "#ffff00",
-                "5": "#ff00ff",
-                "6": "#ff9900",
-                "7": "#6600cc",
-                "8": "#009999"
-            };
-            return colors[classifica] || "#808080"; // Default gray color
-        }
-
-        // Load GeoJSON from file
-        fetch('http://localhost:8000/geojson/Yield_classified_Rice.geojson')
-            .then(response => response.json())
-            .then(data => {
-                var geoJson = L.geoJSON(data, {
-                    style: function(feature) {
-                        return {
-                            color: "black", // Border color
-                            fillColor: getColor(feature.properties.classification), // Fill color
-                            fillOpacity: 1, // Transparency
-                            weight: 1
-                        };
-                    },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties && feature.properties.name) {
-                            layer.bindPopup("Yield: " + feature.properties.Pred_yield + "<br>Class: " + feature.properties.classification);
-                        }
-
-                        // Show class and yield on hover
-                        layer.on('mouseover', function () {
-                            layer.bindTooltip(
-                                "<br>Yield in Kgs: " + feature.properties.Pred_yield,
-                                { permanent: false, className: 'tooltip-style', direction: 'top' }
-                            ).openTooltip();
-                        });
-
-                        layer.on('mouseout', function () {
-                            layer.closeTooltip();
-                        });
-                    }
-                });
-                geoJsonLayer.addLayer(geoJson);
-                geoJsonLayer.addTo(map);
-            })
-            .catch(error => console.error('Error loading GeoJSON:', error));
-
-        // Add legend
-        var legend = L.control({ position: "bottomleft" });
-        
-        legend.onAdd = function(map) {
-            var div = L.DomUtil.create("div", "legend");
-            var classes = ["Rice", "Built-up", "Tree", "Water", "Sugarcane", "Grass", "Brinjal", "Blackgram"];
-            var colors = ["#00ff00","#ff0000", "#0000ff", "#ffff00", "#ff00ff", "#ff9900", "#6600cc", "#009999"];
-
-            div.innerHTML = "<strong>Legend</strong>";
-            for (var i = 0; i < classes.length; i++) {
-                div.innerHTML += `<div class="legend-item">
-                    <i style="background: ${colors[i]};"></i> ${classes[i]}
-                </div>`;
-            }
-            return div;
-        };
-
-        legend.addTo(map);
-    </script>
-</body>
-</html> -->
-
+<!-- 
 
 <!DOCTYPE html>
 <html lang="en">
@@ -561,4 +266,4 @@
         legend.addTo(map);
     </script>
 </body>
-</html>
+</html> -->
