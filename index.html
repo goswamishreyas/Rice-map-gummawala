@@ -81,12 +81,12 @@
                     style: style,
                     onEachFeature: function (feature, layer) {
                         const props = feature.properties;
-                        layer.bindPopup(`Field: ${props.FID}<br>Predicted Yield: ${props.Pred_yield.toFixed(2)} tons/ha`);
+                        layer.bindPopup(`Field: ${props.FID}<br>Predicted Yield: ${props.Pred_yield.toFixed(2)} Kg`);
                     }
                 }).addTo(map);
 
                 const overlayLayers = {
-                    "Yield Layer": yieldLayer
+                    "Rice yield layer": yieldLayer
                 };
 
                 // Add layer control
@@ -97,7 +97,7 @@
 
                 legend.onAdd = function () {
                     const div = L.DomUtil.create('div', 'legend');
-                    div.innerHTML = '<b>Yield (tons/ha)</b><br>';
+                    div.innerHTML = '<b>Rice crop yield (Kg)</b><br>';
                     
                     // Display yield ranges and corresponding colors
                     for (let i = 0; i < yieldRanges.length - 1; i++) {
